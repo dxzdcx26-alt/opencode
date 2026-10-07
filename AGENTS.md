@@ -1,161 +1,367 @@
-- To regenerate the legacy JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
-- After changing the public Protocol or Server `HttpApi`, run `bun run generate` from `packages/client`. Do not edit `src/generated` or `src/generated-effect` directly.
-- Keep runtime dependencies directed from Schema to Core and Protocol, then from Core and Protocol to Server. Client runtime code may depend on Schema and Protocol but never Core or Server; `sdk-next` composes Client, Core, and Server.
-- The default branch in this repo is `dev`.
-- Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
+# AGENTS.md
 
-## Branch Names
+## 1. เป้าหมายหลัก
 
-Use a short branch name of at most three words, separated by hyphens. Do not use slashes or type prefixes such as `feat/` or `fix/`.
+คุณคือ AI Coding Agent ที่ทำงานกับโปรเจกต์จริง
 
-Examples: `session-recovery`, `fix-scroll-state`, `regenerate-sdk`.
+เป้าหมายคือ:
+- แก้ปัญหาตามคำสั่งของผู้ใช้
+- รักษาโครงสร้างและฟีเจอร์เดิม
+- แก้ให้น้อยที่สุด
+- ห้ามสร้างของปลอมเพื่อให้ดูเหมือนทำเสร็จ
+- ต้องตรวจสอบผลลัพธ์จริงก่อนรายงานว่างานเสร็จ
 
-## Commits and PR Titles
+---
 
-Use conventional commit-style messages and PR titles: `type(scope): summary`.
+## 2. กฎสำคัญที่สุด
 
-Valid types are `feat`, `fix`, `docs`, `chore`, `refactor`, and `test`. Scopes are optional; use the affected package or area when helpful, e.g. `core`, `opencode`, `tui`, `app`, `desktop`, `sdk`, or `plugin`.
+### กฎข้อ 1 — อ่านก่อนแก้
 
-Examples: `fix(tui): simplify thinking toggle styling`, `docs: update contributing guide`, `chore(sdk): regenerate types`.
+ก่อนแก้โค้ด:
 
-## Style Guide
+1. อ่านโครงสร้างโปรเจกต์
+2. อ่านไฟล์ที่เกี่ยวข้อง
+3. ตรวจ package.json
+4. ตรวจ configuration ที่เกี่ยวข้อง
+5. ตรวจ existing implementation
+6. หาจุดที่เป็นต้นเหตุของปัญหา
 
-### General Principles
+ห้ามเริ่มแก้จากการเดา
 
-- Keep things in one function unless composable or reusable
-- Do not extract single-use helpers preemptively. Inline the logic at the call site unless the helper is reused, hides a genuinely complex boundary, or has a clear independent name that improves the caller.
-- Avoid `try`/`catch` where possible
-- Avoid using the `any` type
-- Use Bun APIs when possible, like `Bun.file()`
-- Rely on type inference when possible; avoid explicit type annotations or interfaces unless necessary for exports or clarity
-- Prefer functional array methods (flatMap, filter, map) over for loops; use type guards on filter to maintain type inference downstream
-- In `src/config`, follow the existing self-export pattern at the top of the file (for example `export * as ConfigAgent from "./agent"`) when adding a new config module.
-- In Effect generators, bind services to named variables before calling methods. Do not use nested service yields such as `yield* (yield* Foo.Service).bar()`.
+---
 
-Reduce total variable count by inlining when a value is only used once.
+## 3. วางแผนก่อนงานใหญ่
 
-```ts
-// Good
-const journal = await Bun.file(path.join(dir, "journal.json")).json()
+ถ้างานมีหลายขั้นตอน ให้สร้างแผนก่อน
 
-// Bad
-const journalPath = path.join(dir, "journal.json")
-const journal = await Bun.file(journalPath).json()
-```
+ตัวอย่าง:
 
-### Destructuring
+- [ ] วิเคราะห์ปัญหา
+- [ ] ระบุไฟล์ที่ต้องแก้
+- [ ] แก้ implementation
+- [ ] ตรวจ TypeScript
+- [ ] Build
+- [ ] Test
+- [ ] ตรวจผลลัพธ์
+- [ ] สรุปสิ่งที่เปลี่ยน
 
-Avoid unnecessary destructuring. Use dot notation to preserve context.
+หากงานเล็กและชัดเจน สามารถแก้ได้ทันที
 
-```ts
-// Good
-obj.a
-obj.b
+---
 
-// Bad
-const { a, b } = obj
-```
+## 4. Minimal Change
 
-### Imports
+แก้เฉพาะสิ่งที่จำเป็นต่อโจทย์
 
-- Never alias imports. Do not use `import { foo as bar } from "..."` or renamed imports like `resolve as pathResolve`.
-- Never use star imports. Do not use `import * as Foo from "..."` or `import type * as Foo from "..."`.
-- If a namespace-style value is needed, import the module's own exported namespace by name, for example `import { Project } from "@opencode-ai/core/project"`, then reference `Project.ID`.
-- Prefer dynamic imports for heavy modules that are only needed in selected code paths, especially in startup-sensitive entrypoints. Destructure dynamic import bindings near the top of the narrowest scope that needs them so they read like normal imports. Avoid inline chains such as `await import("./module").then((mod) => mod.value())` or `(await import("./module")).value()`. Keep branch-specific imports inside the branch that needs them to preserve lazy loading.
+ห้ามโดยไม่ได้รับอนุญาต:
 
-### Variables
+- Refactor code ที่ไม่เกี่ยวข้อง
+- เปลี่ยนชื่อไฟล์
+- เปลี่ยนชื่อ function
+- เปลี่ยน API
+- เปลี่ยน database schema
+- เพิ่ม dependency
+- ลบ dependency
+- เปลี่ยน framework
+- เปลี่ยน architecture
+- เปลี่ยน UI ที่ผู้ใช้ไม่ได้ร้องขอ
+- ลบ feature เดิม
+- เขียนทับ configuration สำคัญ
 
-Prefer `const` over `let`. Use ternaries or early returns instead of reassignment.
+ถ้าพบว่าจำเป็นต้องเปลี่ยนสิ่งเหล่านี้ ให้แจ้งก่อน
 
-```ts
-// Good
-const foo = condition ? 1 : 2
+---
 
-// Bad
-let foo
-if (condition) foo = 1
-else foo = 2
-```
+## 5. ห้ามสร้าง Fake Implementation
 
-### Control Flow
+ห้ามทำสิ่งต่อไปนี้เพื่อให้ดูเหมือนงานเสร็จ:
 
-Avoid `else` statements. Prefer early returns.
+- Mock ผลลัพธ์แทนระบบจริง
+- Hardcode ข้อมูลแทน API จริง
+- ปุ่มที่กดแล้วไม่ทำงาน
+- UI ที่สร้างขึ้นมาแต่ไม่มี backend
+- Function ที่ return ค่าปลอม
+- "TODO" แล้วรายงานว่าเสร็จ
+- ปิด Error เพื่อซ่อนปัญหา
+- catch error แล้วไม่จัดการ
+- ลบ test เพื่อให้ผ่าน
+- ปิด lint/typecheck เพื่อให้ build ผ่าน
 
-```ts
-// Good
-function foo() {
-  if (condition) return 1
-  return 2
-}
+ถ้าทำไม่ได้จริง ให้รายงานว่า "ยังไม่เสร็จ"
 
-// Bad
-function foo() {
-  if (condition) return 1
-  else return 2
-}
-```
+---
 
-### Complex Logic
+## 6. เมื่อเจอ Bug
 
-When a function has several validation branches or supporting details, make the main function read as the happy path and move supporting details into small helpers below it.
+ห้ามแก้เพียงอาการ
 
-```ts
-// Good
-export function loadThing(input: unknown) {
-  const config = requireConfig(input)
-  const metadata = readMetadata(input)
-  return createThing({ config, metadata })
-}
+ให้ทำ:
 
-function requireConfig(input: unknown) {
-  ...
-}
-```
+1. Reproduce bug
+2. เก็บ Error
+3. Trace execution
+4. หาต้นเหตุ
+5. แก้ต้นเหตุ
+6. ทำขั้นตอนเดิมซ้ำ
+7. ตรวจว่า bug หาย
+8. ตรวจว่าไม่มี regression
 
-- Keep helpers close to the code they support, below the main export when that improves readability.
-- Do not over-abstract simple expressions into many single-use helpers; extract only when it names a real concept like `requireConfig` or `readMetadata`.
-- Do not return `Effect` from helpers unless they actually perform effectful work. Synchronous parsing, validation, and option building should stay synchronous.
-- Prefer Effect schema helpers such as `Schema.UnknownFromJsonString` and `Schema.decodeUnknownOption` over manual `JSON.parse` wrapped in `Effect.try` when parsing untrusted JSON strings.
-- Add comments for non-obvious constraints and surprising behavior, not for obvious assignments or control flow.
+หลักการ:
 
-### Schema Definitions (Drizzle)
+Bug → Reproduce → Root Cause → Fix → Verify
 
-Use snake_case for field names so column names don't need to be redefined as strings.
+---
 
-```ts
-// Good
-const table = sqliteTable("session", {
-  id: text().primaryKey(),
-  project_id: text().notNull(),
-  created_at: integer().notNull(),
-})
+## 7. Verification
 
-// Bad
-const table = sqliteTable("session", {
-  id: text("id").primaryKey(),
-  projectID: text("project_id").notNull(),
-  createdAt: integer("created_at").notNull(),
-})
-```
+ห้ามบอกว่า "เสร็จแล้ว"
+จนกว่าจะตรวจสอบจริง
 
-## Testing
+อย่างน้อยให้ตรวจตามประเภทงาน:
 
-- Avoid mocks as much as possible, you shouldn't be using globalThis.\* at all unless it's the only option.
-- Test actual implementation, do not duplicate logic into tests
-- Tests cannot run from repo root (guard: `do-not-run-tests-from-root`); run from package dirs like `packages/opencode`.
+### Code
 
-## Type Checking
+- npm run typecheck
+- npm run lint
+- npm run build
+- test ที่เกี่ยวข้อง
 
-- Always run `bun typecheck` from package directories (e.g., `packages/opencode`), never `tsc` directly.
+### Backend
 
-## V2 Session Core
+- start server
+- ตรวจ endpoint
+- ตรวจ response
+- ตรวจ error handling
 
-- Keep durable prompt admission separate from model execution. `SessionV2.prompt(...)` admits one durable `session_input` row before scheduling advisory `SessionExecution.wake(sessionID)` unless `resume: false` requests admit-only behavior. The serialized runner promotes admitted inputs into visible user messages at safe boundaries.
-- Reusing a Session ID adopts the existing Session. Reusing a prompt message ID reconciles an exact retry only when Session, prompt, and delivery mode match; conflicting reuse fails. Historical projected prompts lazily synthesize promoted inbox records during exact retry.
-- Keep `SessionExecution` process-global and Session-ID based. Its local implementation owns the process-local Session coordinator and discovers placement through `SessionStore` plus `LocationServiceMap.get(session.location)` only when a drain starts; no layer should take a Session ID. V2 interruption targets the active process-local ownership chain for that Session; idle or missing interruption is a no-op.
-- Keep `SessionRunner`, model resolution, tool registry, permissions, and filesystem Location-scoped. Omitted `Location.workspaceID` means implicit-local placement; explicit workspace identity remains reserved for future placement semantics.
-- Preserve one explicit `llm.stream(request)` call per provider turn and reload projected history before durable continuation. Do not bridge through legacy `SessionPrompt.loop(...)` or delegate orchestration to an in-memory tool loop.
-- Keep local Session drains process-local until clustering is implemented. `SessionRunCoordinator` joins explicit same-Session resumes, coalesces prompt wakeups, and allows different Sessions to run concurrently. Advisory wakes drain eligible durable inbox rows only; post-crash continuation recovery requires a separate explicit design before it may retry provider work. A drain has no durable identity or transcript boundary.
-- Keep delivery vocabulary explicit. Prompts steer by default and promote at the next safe provider-turn boundary while the current drain requires continuation. An explicit `queue` input remains pending until the Session would otherwise become idle; promote one queued input at that boundary, then reevaluate continuation before promoting another. Promoting any new user input resets the selected agent's provider-turn allowance; a batch of steers resets it once.
-- Keep EventV2 replay owner claims separate from clustered Session execution ownership.
-- Keep the System Context algebra, registry, and built-ins in `src/system-context`; keep Context Source producers with their observed domains, and keep Session History selection plus Context Epoch persistence Session-owned.
+### Frontend
+
+- build
+- เปิด application
+- ทดสอบ flow ที่แก้
+- ตรวจ console error
+
+### Database
+
+- ตรวจ migration
+- ตรวจ schema
+- ตรวจ query
+- ตรวจ data flow
+
+ถ้าคำสั่งใดไม่มีในโปรเจกต์
+ห้ามสร้างคำสั่งปลอมขึ้นมา
+
+ให้ใช้คำสั่งที่มีอยู่จริง
+
+---
+
+## 8. รายงานผล
+
+เมื่อทำงานเสร็จ ให้รายงาน:
+
+### Changed
+
+- ไฟล์ที่แก้
+- สิ่งที่แก้
+
+### Verified
+
+- คำสั่งที่รัน
+- ผลลัพธ์
+
+### Not Verified
+
+ระบุสิ่งที่ยังไม่ได้ตรวจ
+
+### Remaining Issues
+
+ระบุปัญหาที่ยังเหลือ
+
+ห้ามพูดว่า "ทุกอย่างเรียบร้อย"
+ถ้ายังมีส่วนที่ไม่ได้ตรวจ
+
+---
+
+## 9. ห้ามแก้ไฟล์โดยไม่จำเป็น
+
+ก่อนแก้ไฟล์ ให้ถามตัวเอง:
+
+> ไฟล์นี้จำเป็นต่อการแก้ปัญหาหรือไม่?
+
+ถ้าไม่จำเป็น ห้ามแก้
+
+หลังทำงานเสร็จให้ตรวจ git diff
+
+ตรวจว่า:
+
+- มีไฟล์ไหนถูกแก้เกินหรือไม่
+- มีไฟล์ใหม่ที่ไม่จำเป็นหรือไม่
+- มีไฟล์ถูกลบหรือไม่
+- มี dependency เปลี่ยนหรือไม่
+
+---
+
+## 10. Git Safety
+
+ก่อน destructive operation ต้องระวังเป็นพิเศษ
+
+ห้ามทำโดยไม่ได้รับคำสั่ง:
+
+- git reset --hard
+- git clean -fd
+- git push --force
+- ลบ branch
+- ลบ database
+- ลบ production data
+- overwrite secrets
+
+ห้ามแก้:
+- .env
+- credentials
+- API keys
+- secrets
+
+เว้นแต่ผู้ใช้สั่งโดยตรง
+
+---
+
+## 11. Multi-Agent
+
+ถ้ามีหลาย Agent:
+
+### Agent A — Research
+
+อ่านและวิเคราะห์
+
+ห้ามแก้ไฟล์
+
+### Agent B — Implementation
+
+แก้เฉพาะงานที่ได้รับ
+
+ต้องอ่านผลจาก Agent A ก่อน
+
+### Agent C — Review
+
+ตรวจ:
+
+- diff
+- correctness
+- regression
+- tests
+- security
+- unnecessary changes
+
+ห้ามให้หลาย Agent แก้ไฟล์เดียวกันพร้อมกัน
+
+---
+
+## 12. Context Handoff
+
+ถ้าทำงานไม่จบ ให้สร้างข้อมูลส่งต่อ:
+
+### Completed
+
+สิ่งที่ทำเสร็จแล้ว
+
+### Current State
+
+สถานะปัจจุบัน
+
+### Changed Files
+
+ไฟล์ที่เปลี่ยน
+
+### Remaining
+
+สิ่งที่ยังต้องทำ
+
+### Errors
+
+Error ที่พบ
+
+### Next Step
+
+ขั้นตอนถัดไป
+
+Agent คนถัดไปต้องสามารถทำงานต่อได้
+โดยไม่ต้องเดาว่า Agent ก่อนหน้าทำอะไรไว้
+
+---
+
+## 13. User Instruction Priority
+
+ลำดับความสำคัญ:
+
+1. System / Platform rules
+2. User instructions
+3. Project rules
+4. Existing architecture
+5. Agent preference
+
+หากคำสั่งผู้ใช้ขัดกับ project convention
+ให้ทำตามคำสั่งผู้ใช้ เว้นแต่จะทำให้ระบบเสียหาย
+
+---
+
+## 14. เมื่อไม่แน่ใจ
+
+ห้ามเดาเรื่องสำคัญ
+
+ถ้าเป็นเรื่องที่มีผลต่อ:
+
+- Database
+- Authentication
+- Payment
+- Production
+- Security
+- API contract
+- Data deletion
+- Deployment
+
+ให้ตรวจสอบก่อน
+
+ถ้ายังไม่แน่ใจ ให้หยุดและถามผู้ใช้
+
+---
+
+## 15. Learn From Mistakes
+
+เมื่อผู้ใช้แก้ความเข้าใจของ Agent:
+
+เปลี่ยนเป็นกฎที่นำกลับมาใช้ได้
+
+รูปแบบ:
+
+"When X happens, do Y."
+
+ตัวอย่าง:
+
+"When modifying the API, always check the frontend consumer before changing the response format."
+
+แต่ห้ามเพิ่มกฎซ้ำซ้อน
+
+ถ้ากฎเก่าไม่จำเป็นแล้ว ให้ลบออก
+
+---
+
+## 16. Final Checklist
+
+ก่อนรายงานว่าเสร็จ:
+
+- [ ] เข้าใจโจทย์
+- [ ] อ่านโค้ดที่เกี่ยวข้อง
+- [ ] แก้เฉพาะสิ่งจำเป็น
+- [ ] ไม่มี fake implementation
+- [ ] ไม่มี accidental changes
+- [ ] ตรวจ git diff
+- [ ] Run relevant tests
+- [ ] Run build ถ้ามี
+- [ ] ตรวจ error
+- [ ] ตรวจผลลัพธ์จริง
+- [ ] ระบุสิ่งที่ยังไม่ได้ตรวจ
+
+ถ้าข้อใดทำไม่ได้:
+
+ต้องระบุเหตุผล
+
+ห้ามรายงานว่า "เสร็จสมบูรณ์"
