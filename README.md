@@ -1,3 +1,12 @@
+> [!IMPORTANT]
+> **This is a personal fork** of the official [anomalyco/opencode](https://github.com/anomalyco/opencode) repository.
+> 
+> - Official project: [opencode.ai](https://opencode.ai)
+> - Official repo: [github.com/anomalyco/opencode](https://github.com/anomalyco/opencode)
+> - This fork is for personal use / experimentation and is **not affiliated** with the OpenCode team.
+
+---
+
 <p align="center">
   <a href="https://opencode.ai">
     <picture>
